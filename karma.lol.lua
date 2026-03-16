@@ -731,15 +731,14 @@ local pcallSuccess, pcallError = pcall(function()
     UserInputService.InputBegan:Connect(function(input, processed)
         if not processed and input.KeyCode == Enum.KeyCode.RightShift then
             UI["1"].Enabled = not UI["1"].Enabled
-            -- Unlock mouse when UI is open
-            if UI["1"].Enabled then
-                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-                UserInputService.MouseIconEnabled = true
-            else
-                -- Most games lock mouse in center when playing, we just let the game handle it but we can force lock center if ThirdPerson is on, etc.
-                -- For general executor toggles, usually letting the game reclaim it is best, or forcing LockCenter if they were in first person.
-                -- UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter 
-            end
+        end
+    end)
+
+    -- Force Mouse Unlock while UI is open (overpowers First Person and Shift Lock)
+    RunService.RenderStepped:Connect(function()
+        if UI["1"].Enabled then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            UserInputService.MouseIconEnabled = true
         end
     end)
 
@@ -1158,7 +1157,9 @@ local pcallSuccess, pcallError = pcall(function()
                 -- Chams
                 if KarmaConfig.Visual.Chams then
                     for _, part in pairs(p.Character:GetChildren()) do
-                        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Transparency < 1 then
+                        local n = part.Name
+                        local isLimb = n == "Head" or string.match(n, "Torso") or string.match(n, "Arm") or string.match(n, "Leg") or string.match(n, "Hand") or string.match(n, "Foot")
+                        if part:IsA("BasePart") and isLimb and part.Transparency < 1 then
                             local cham = part:FindFirstChild("KarmaCham")
                             if not cham then
                                 cham = Instance.new("BoxHandleAdornment", part)
