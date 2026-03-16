@@ -459,14 +459,47 @@ local pcallSuccess, pcallError = pcall(function()
         local colorCorner = Instance.new("UICorner", colorDisplay)
         colorCorner.CornerRadius = UDim.new(0, 4)
 
-        colorDisplay.MouseButton1Click:Connect(function()
-            local r, g, b = math.random(50, 255), math.random(50, 255), math.random(50, 255)
-            local newColor = Color3.fromRGB(r, g, b)
-            colorDisplay.BackgroundColor3 = newColor
-            if callback then callback(newColor, defaultAlpha or 1) end
+        -- Right-click on ColorPicker to Input RGB Manually
+        colorDisplay.MouseButton2Click:Connect(function()
+            local CoreGui = game:GetService("CoreGui")
+            local rgbPrompt = Instance.new("ScreenGui", CoreGui)
+            local pFrame = Instance.new("Frame", rgbPrompt)
+            pFrame.Size = UDim2.new(0, 200, 0, 80)
+            pFrame.Position = UDim2.new(0.5, -100, 0.5, -40)
+            pFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+            Instance.new("UICorner", pFrame).CornerRadius = UDim.new(0, 4)
+            
+            local t = Instance.new("TextBox", pFrame)
+            t.Size = UDim2.new(1, -20, 0, 30)
+            t.Position = UDim2.new(0, 10, 0, 10)
+            t.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            t.TextColor3 = Color3.fromRGB(255,255,255)
+            t.PlaceholderText = "R,G,B (e.g. 255,0,0)"
+            Instance.new("UICorner", t).CornerRadius = UDim.new(0, 4)
+            
+            local b = Instance.new("TextButton", pFrame)
+            b.Size = UDim2.new(1, -20, 0, 25)
+            b.Position = UDim2.new(0, 10, 0, 45)
+            b.BackgroundColor3 = Color3.fromRGB(80,80,80)
+            b.TextColor3 = Color3.fromRGB(255,255,255)
+            b.Text = "Set Color"
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+            
+            b.MouseButton1Click:Connect(function()
+                local s = string.split(t.Text, ",")
+                if #s == 3 then
+                    local r, g, blu = tonumber(s[1]), tonumber(s[2]), tonumber(s[3])
+                    if r and g and blu then
+                        local newColor = Color3.fromRGB(math.clamp(r,0,255), math.clamp(g,0,255), math.clamp(blu,0,255))
+                        colorDisplay.BackgroundColor3 = newColor
+                        if callback then callback(newColor, defaultAlpha or 1) end
+                    end
+                end
+                rgbPrompt:Destroy()
+            end)
         end)
     end
-
+    
     local KarmaConfig = {
         Legit = { Lock = false, LockKey = Enum.KeyCode.E, LockMode = "Hold", Hitbox = "Head", Smoothness = 0, Silent = false, Resolver = false, ResolverMouse = false, FOV = 90, DrawFOV = false, Prediction = 0, AutoUnlock = false, TeamCheck = false, WallCheck = false },
         Visual = { 
@@ -478,7 +511,7 @@ local pcallSuccess, pcallError = pcall(function()
             HeadDot = false, HeadDotColor = Color3.fromRGB(255,255,255), 
             Fullbright = false, NoFog = false, 
             CustomSky = false, SkyColor = Color3.fromRGB(150, 200, 255), 
-            RainOff = false, 
+            RainOff = false, CustomWeather = false, TimeOfDay = 12, MaxDistance = 2000,
             Highlight = false, HighlightColor = Color3.fromRGB(255,0,0), 
             ChamsThroughWalls = false, 
             Crosshair = false, CrosshairType = "Cross", CrosshairSize = 10, CrosshairThickness = 2, SpinCrosshair = false, CrosshairSpinSpeed = 5 
@@ -523,7 +556,16 @@ local pcallSuccess, pcallError = pcall(function()
     Library:CreateToggle(Tabs.visual, "Fullbright", KarmaConfig.Visual.Fullbright, function(v) KarmaConfig.Visual.Fullbright = v end)
     Library:CreateToggle(Tabs.visual, "No Fog", KarmaConfig.Visual.NoFog, function(v) KarmaConfig.Visual.NoFog = v end)
     Library:CreateToggle(Tabs.visual, "Highlight Players", KarmaConfig.Visual.Highlight, function(v) KarmaConfig.Visual.Highlight = v end)
+    Library:CreateColorPicker(Tabs.visual, "Highlight Col", KarmaConfig.Visual.HighlightColor, 1, function(c, a) KarmaConfig.Visual.HighlightColor = c end)
     Library:CreateToggle(Tabs.visual, "Chams Thru Walls", KarmaConfig.Visual.ChamsThroughWalls, function(v) KarmaConfig.Visual.ChamsThroughWalls = v end)
+    Library:CreateSlider(Tabs.visual, "Max Distance", 100, 5000, 2000, false, function(v) KarmaConfig.Visual.MaxDistance = v end)
+
+    Library:CreateSection(Tabs.visual, "Weather")
+    Library:CreateToggle(Tabs.visual, "Rain Off", KarmaConfig.Visual.RainOff, function(v) KarmaConfig.Visual.RainOff = v end)
+    Library:CreateToggle(Tabs.visual, "Custom Weather", KarmaConfig.Visual.CustomWeather, function(v) KarmaConfig.Visual.CustomWeather = v end)
+    Library:CreateSlider(Tabs.visual, "Time Of Day", 0, 24, 12, false, function(v) KarmaConfig.Visual.TimeOfDay = v end)
+    Library:CreateToggle(Tabs.visual, "Custom Sky", KarmaConfig.Visual.CustomSky, function(v) KarmaConfig.Visual.CustomSky = v end)
+    Library:CreateColorPicker(Tabs.visual, "Sky Color", KarmaConfig.Visual.SkyColor, 1, function(c, a) KarmaConfig.Visual.SkyColor = c end)
 
     Library:CreateSection(Tabs.visual, "Crosshair")
     Library:CreateToggle(Tabs.visual, "Enable Crosshair", KarmaConfig.Visual.Crosshair, function(v) KarmaConfig.Visual.Crosshair = v end)
@@ -689,6 +731,15 @@ local pcallSuccess, pcallError = pcall(function()
     UserInputService.InputBegan:Connect(function(input, processed)
         if not processed and input.KeyCode == Enum.KeyCode.RightShift then
             UI["1"].Enabled = not UI["1"].Enabled
+            -- Unlock mouse when UI is open
+            if UI["1"].Enabled then
+                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+                UserInputService.MouseIconEnabled = true
+            else
+                -- Most games lock mouse in center when playing, we just let the game handle it but we can force lock center if ThirdPerson is on, etc.
+                -- For general executor toggles, usually letting the game reclaim it is best, or forcing LockCenter if they were in first person.
+                -- UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter 
+            end
         end
     end)
 
@@ -859,10 +910,14 @@ local pcallSuccess, pcallError = pcall(function()
                 
                 local targetPart = currentTarget.Character:FindFirstChild(targetPartName) or currentTarget.Character:FindFirstChild("HumanoidRootPart")
                 if targetPart then
-                    local predictedPos = targetPart.Position + (targetPart.Velocity * KarmaConfig.Legit.Prediction)
+                    -- Fix for Head hitting neck: aim slightly higher if Head
+                    local basePos = targetPart.Position
+                    if targetPart.Name == "Head" then
+                         basePos = basePos + Vector3.new(0, targetPart.Size.Y / 4, 0)
+                    end
+                    local predictedPos = basePos + (targetPart.Velocity * KarmaConfig.Legit.Prediction)
                     
                     if KarmaConfig.Legit.Resolver then
-                        -- Highly simplified mock of resolver logic
                         predictedPos = predictedPos + Vector3.new(0, 0.5, 0)
                     end
                     
@@ -980,6 +1035,12 @@ local pcallSuccess, pcallError = pcall(function()
                         else
                             for _, l in pairs(esp.SkeletonLines) do l.Visible = false end
                         end
+                        
+                        -- Distance Limit Check (Hide if too far)
+                        if (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude > KarmaConfig.Visual.MaxDistance then
+                            for k, v in pairs(esp) do if type(v) == "table" then for _, l in pairs(v) do l.Visible = false end else v.Visible = false end end
+                        end
+                        
                     else
                         for k, v in pairs(esp) do if type(v) == "table" then for _, l in pairs(v) do l.Visible = false end else v.Visible = false end end
                     end
@@ -1038,7 +1099,6 @@ local pcallSuccess, pcallError = pcall(function()
         
         -- Clear Rain/Weather
         if KarmaConfig.Visual.RainOff then
-            -- Attempt to remove common weather particle emitters in workspace
             for _, v in pairs(Workspace:GetDescendants()) do
                 if v:IsA("ParticleEmitter") and (string.match(string.lower(v.Name), "rain") or string.match(string.lower(v.Name), "snow")) then
                     v.Enabled = false
@@ -1046,7 +1106,13 @@ local pcallSuccess, pcallError = pcall(function()
             end
         end
         
-        -- Custom Sky
+        -- Custom Weather & Sky
+        if KarmaConfig.Visual.CustomWeather then
+            -- Note: Creating parts/particles every frame is bad, we just set properties
+            Lighting.GlobalShadows = true
+            Lighting.ClockTime = KarmaConfig.Visual.TimeOfDay
+        end
+        
         if KarmaConfig.Visual.CustomSky then
             local sky = Lighting:FindFirstChildOfClass("Sky")
             if not sky then
@@ -1092,14 +1158,13 @@ local pcallSuccess, pcallError = pcall(function()
                 -- Chams
                 if KarmaConfig.Visual.Chams then
                     for _, part in pairs(p.Character:GetChildren()) do
-                        if part:IsA("BasePart") then
+                        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Transparency < 1 then
                             local cham = part:FindFirstChild("KarmaCham")
                             if not cham then
                                 cham = Instance.new("BoxHandleAdornment", part)
                                 cham.Name = "KarmaCham"
-                                cham.AlwaysOnTop = KarmaConfig.Visual.ChamsThroughWalls
                                 cham.ZIndex = 10
-                                cham.Size = part.Size
+                                cham.Size = part.Size + Vector3.new(0.05, 0.05, 0.05)
                                 cham.Adornee = part
                                 cham.Transparency = 0.5
                             end
@@ -1191,7 +1256,6 @@ local pcallSuccess, pcallError = pcall(function()
         end
     end)
 
-    -- ADDITIONAL LOGIC HOOKS
     local lastTick = tick()
     local isLagging = false
     RunService.Heartbeat:Connect(function()
@@ -1207,6 +1271,26 @@ local pcallSuccess, pcallError = pcall(function()
                     lastTick = tick()
                     isLagging = false
                 end)
+            end
+        end
+    end)
+    
+    local danceAnim = Instance.new("Animation")
+    local danceTrack = nil
+    RunService.Heartbeat:Connect(function()
+        if KarmaConfig.Troll.DanceSpam and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            if not danceTrack or danceTrack.Animation.AnimationId ~= "rbxassetid://3333331810" then -- Mock ID for demonstration
+                -- In a real scenario, use actual emote IDs based on the selected Emote
+                local emotes = { e1 = "rbxassetid://3333331810", e2 = "rbxassetid://3333331810", e3 = "rbxassetid://3333331810", point = "rbxassetid://507770453", wave = "rbxassetid://507770239" }
+                danceAnim.AnimationId = emotes[KarmaConfig.Troll.DanceEmote] or emotes.e1
+                danceTrack = LocalPlayer.Character.Humanoid:LoadAnimation(danceAnim)
+                danceTrack.Looped = true
+                danceTrack:Play()
+            end
+        else
+            if danceTrack then
+                danceTrack:Stop()
+                danceTrack = nil
             end
         end
     end)
@@ -1301,36 +1385,76 @@ local pcallSuccess, pcallError = pcall(function()
         end)
     end
 
-    -- LOADING SCREEN
-    local LoadingFrame = Instance.new("Frame", UI["1"])
-    LoadingFrame.Name = "LoadingFrame"
-    LoadingFrame.Size = UDim2.new(0, 200, 0, 50)
-    LoadingFrame.Position = UDim2.new(1, -220, 0, 20)
-    LoadingFrame.BackgroundColor3 = Color3.fromRGB(59, 59, 59)
-    LoadingFrame.BorderSizePixel = 0
+    -- LOADING SCREEN & LOADER UI
+    UI["1"].Enabled = false -- initially hidden
     
-    local LoadCorner = Instance.new("UICorner", LoadingFrame)
-    LoadCorner.CornerRadius = UDim.new(0, 5)
+    local KarmaLoader = Instance.new("ScreenGui", CoreGui)
+    KarmaLoader.Name = "KarmaLoader"
     
-    local LoadStroke = Instance.new("UIStroke", LoadingFrame)
-    LoadStroke.Transparency = 0.5
-    LoadStroke.Thickness = 2
+    local LoaderBG = Instance.new("Frame", KarmaLoader)
+    LoaderBG.Size = UDim2.new(0, 300, 0, 150)
+    LoaderBG.Position = UDim2.new(0.5, -150, 0.5, -75)
+    LoaderBG.BackgroundColor3 = Color3.fromRGB(59, 59, 59)
+    LoaderBG.BorderSizePixel = 0
+    Instance.new("UICorner", LoaderBG).CornerRadius = UDim.new(0, 5)
     
-    local LoadText = Instance.new("TextLabel", LoadingFrame)
-    LoadText.Size = UDim2.new(1, 0, 1, 0)
-    LoadText.BackgroundTransparency = 1
-    LoadText.Text = "loading karma.lol hang tight..."
-    LoadText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    LoadText.FontFace = Font.new([[rbxasset://fonts/families/JosefinSans.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-    LoadText.TextSize = 14
+    local LoaderStroke = Instance.new("UIStroke", LoaderBG)
+    LoaderStroke.Transparency = 0.5
+    LoaderStroke.Thickness = 2
+    LoaderStroke.Color = Color3.fromRGB(80, 80, 80)
     
-    UI["1"].Enabled = true
+    local LoaderTitleLabel = Instance.new("TextLabel", LoaderBG)
+    LoaderTitleLabel.Size = UDim2.new(1, 0, 0, 40)
+    LoaderTitleLabel.Position = UDim2.new(0, 0, 0, 20)
+    LoaderTitleLabel.BackgroundTransparency = 1
+    LoaderTitleLabel.Text = "karma.lol"
+    LoaderTitleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+    LoaderTitleLabel.FontFace = Font.new([[rbxasset://fonts/families/JosefinSans.json]], Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    LoaderTitleLabel.TextSize = 24
     
-    task.delay(10, function()
-        LoadingFrame:Destroy()
-        UI["2"].Visible = true
-    end)
+    local LoadBtnMain = Instance.new("TextButton", LoaderBG)
+    LoadBtnMain.Size = UDim2.new(0, 200, 0, 40)
+    LoadBtnMain.Position = UDim2.new(0.5, -100, 1, -60)
+    LoadBtnMain.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    LoadBtnMain.Text = "Load karma.lol"
+    LoadBtnMain.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LoadBtnMain.FontFace = Font.new([[rbxasset://fonts/families/JosefinSans.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    LoadBtnMain.TextSize = 16
+    Instance.new("UICorner", LoadBtnMain).CornerRadius = UDim.new(0, 4)
 
+    LoadBtnMain.MouseButton1Click:Connect(function()
+        LoadBtnMain.Text = "Loading..."
+        task.wait(0.5)
+        KarmaLoader:Destroy()
+        
+        UI["1"].Enabled = true
+        local LoadingFrame = Instance.new("Frame", UI["1"])
+        LoadingFrame.Name = "LoadingFrame"
+        LoadingFrame.Size = UDim2.new(0, 200, 0, 50)
+        LoadingFrame.Position = UDim2.new(1, -220, 0, 20)
+        LoadingFrame.BackgroundColor3 = Color3.fromRGB(59, 59, 59)
+        LoadingFrame.BorderSizePixel = 0
+        
+        local LoadCorner = Instance.new("UICorner", LoadingFrame)
+        LoadCorner.CornerRadius = UDim.new(0, 5)
+        
+        local LoadStrokeF = Instance.new("UIStroke", LoadingFrame)
+        LoadStrokeF.Transparency = 0.5
+        LoadStrokeF.Thickness = 2
+        
+        local LoadText = Instance.new("TextLabel", LoadingFrame)
+        LoadText.Size = UDim2.new(1, 0, 1, 0)
+        LoadText.BackgroundTransparency = 1
+        LoadText.Text = "loading karma.lol hang tight..."
+        LoadText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        LoadText.FontFace = Font.new([[rbxasset://fonts/families/JosefinSans.json]], Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+        LoadText.TextSize = 14
+        
+        task.delay(10, function()
+            LoadingFrame:Destroy()
+            UI["2"].Visible = true
+        end)
+    end)
 end)
 
 if not pcallSuccess then
